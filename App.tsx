@@ -70,8 +70,10 @@ const App: React.FC = () => {
 
   const updateCommentary = async (state: GameState) => {
     if (!session) return;
+    const user = state.players.find(p => p.id === 'player');
+    if (!user) return;
+
     setLoadingCommentary(true);
-    const user = state.players.find(p => p.id === 'player')!;
     const comm = await getPokerCommentary(user.cards, state.communityCards, state.phase, state.pot, user.chips);
     setGameState(prev => ({ ...prev, commentary: comm }));
     setLoadingCommentary(false);
@@ -80,6 +82,8 @@ const App: React.FC = () => {
   const endHand = () => {
     const players = [...gameState.players];
     const activePlayers = players.filter(p => !p.isFolded);
+    if (activePlayers.length === 0) return;
+
     const results = activePlayers.map(p => ({
         player: p,
         eval: evaluateHand([...gameState.communityCards, ...p.cards])
@@ -111,6 +115,7 @@ const App: React.FC = () => {
   };
 
   const startNewHand = () => {
+    if (gameState.players.length === 0) return;
     setWinnerPopup(null);
     const newDeck = createDeck();
     const playerCount = gameState.players.length;
@@ -167,6 +172,8 @@ const App: React.FC = () => {
 
   const handleAction = (action: string, amount: number = 0) => {
     const activePlayer = gameState.players[gameState.activePlayerIndex];
+    if (!activePlayer) return;
+
     if (action === 'raise' || action === 'call' || action === 'bet') {
       setBettingPlayerId(activePlayer.id);
       setTimeout(() => {
@@ -179,6 +186,8 @@ const App: React.FC = () => {
     setGameState(prev => {
       const players = [...prev.players];
       const player = players[prev.activePlayerIndex];
+      if (!player) return prev;
+
       let newCurrentBet = prev.currentBet;
       let newLastRaiser = lastRaiserIndex;
       
@@ -209,7 +218,7 @@ const App: React.FC = () => {
       }
       
       let nextIndex = (prev.activePlayerIndex + 1) % players.length;
-      while((players[nextIndex].isFolded || players[nextIndex].chips <= 0) && players.some(p => !p.isFolded)) {
+      while((players[nextIndex].isFolded || (players[nextIndex].chips <= 0 && players[nextIndex].id !== 'player')) && players.some(p => !p.isFolded)) {
           nextIndex = (nextIndex + 1) % players.length;
       }
 
@@ -254,7 +263,6 @@ const App: React.FC = () => {
 
     return (
       <div key={p.id} className={`absolute ${posClass} flex flex-col items-center gap-1 transition-all duration-500 z-[100] group ${p.isFolded ? 'opacity-30' : 'opacity-100'}`}>
-        {/* Stats Popup */}
         <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-40 bg-black/95 backdrop-blur-md border border-amber-500/30 p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-all z-[300] pointer-events-none shadow-2xl scale-90 group-hover:scale-100 origin-bottom">
            <div className="text-[9px] text-amber-500 font-bold uppercase tracking-widest mb-2 border-b border-white/10 pb-1">Stats: {p.name}</div>
            <div className="flex justify-between mb-1 text-[8px] text-white/40">Hands <span className="text-white font-mono">{p.handsPlayed}</span></div>
@@ -285,7 +293,6 @@ const App: React.FC = () => {
   return (
     <div className="relative w-screen h-screen flex flex-col items-center justify-center poker-felt overflow-hidden">
       
-      {/* Winner Popup */}
       {winnerPopup && (
         <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-pop">
            <div className="relative w-[360px] bg-black/90 border-4 border-amber-500/50 p-8 rounded-[3rem] shadow-[0_0_100px_rgba(251,191,36,0.4)] text-center flex flex-col items-center gap-6">
@@ -304,7 +311,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Moderator */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[200]">
         <div className="bg-black/90 backdrop-blur-xl border border-white/10 p-2.5 rounded-2xl flex items-center gap-3 shadow-2xl">
           <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center text-black font-bold text-lg shadow-[0_0_10px_rgba(251,191,36,0.3)]"><span className="font-cinzel">A</span></div>
@@ -315,61 +321,61 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Arena Container */}
       <div className="relative w-full h-full flex items-center justify-center">
-        
-        {/* PLAYER OUTER POSITIONS */}
-        {renderPlayerAtPos(0, "bottom-8 left-1/2 -translate-x-1/2 scale-110")} {/* User */}
-        {renderPlayerAtPos(1, "bottom-24 left-12")}
-        {renderPlayerAtPos(2, "top-1/2 -translate-y-1/2 left-8")}
-        {renderPlayerAtPos(3, "top-24 left-12")}
-        {renderPlayerAtPos(4, "top-20 left-1/2 -translate-x-1/2")} {/* Opponent Center */}
-        {renderPlayerAtPos(5, "top-24 right-12")}
-        {renderPlayerAtPos(6, "top-1/2 -translate-y-1/2 right-8")}
-        {renderPlayerAtPos(7, "bottom-24 right-12")}
+        {/* BOTTOM SIDE: Pairs moved significantly closer to the table border */}
+        {renderPlayerAtPos(0, "bottom-16 left-[38%] -translate-x-1/2 scale-110")}
+        {renderPlayerAtPos(7, "bottom-16 right-[38%] translate-x-1/2")}
 
-        {/* COMPACT VERTICAL TABLE */}
-        <div className={`relative w-[340px] h-[75vh] bg-black/50 border-[4px] border-slate-900/80 rounded-[100px] shadow-[inset_0_0_100px_rgba(0,0,0,0.9),0_20px_80px_rgba(0,0,0,0.8)] flex flex-col items-center justify-center transition-all duration-500 ${splashPot ? 'scale-[1.02]' : ''}`}>
-             
-             <div className="flex flex-col items-center gap-4 py-8">
-                {/* Active Pot Area */}
-                <div className="text-center mb-4">
-                  <span className="text-[7px] text-white/20 uppercase font-bold tracking-[0.4em] block mb-1">Active Pot</span>
-                  <span className={`text-4xl font-cinzel font-bold text-amber-500 tabular-nums transition-all ${splashPot ? 'scale-110 text-amber-400' : ''}`}>
+        {/* TOP SIDE: Pairs moved significantly closer to the table border */}
+        {renderPlayerAtPos(3, "top-28 left-[38%] -translate-x-1/2")}
+        {renderPlayerAtPos(4, "top-28 right-[38%] translate-x-1/2")}
+
+        {/* LEFT SIDE: Pairs moved inward toward the table edge */}
+        {renderPlayerAtPos(1, "left-[22%] top-[65%] -translate-y-1/2")}
+        {renderPlayerAtPos(2, "left-[22%] top-[35%] -translate-y-1/2")}
+
+        {/* RIGHT SIDE: Pairs moved inward toward the table edge */}
+        {renderPlayerAtPos(5, "right-[22%] top-[35%] -translate-y-1/2")}
+        {renderPlayerAtPos(6, "right-[22%] top-[65%] -translate-y-1/2")}
+
+        {/* LARGER VERTICAL TABLE */}
+        <div className={`relative w-[520px] h-[72vh] bg-black/50 border-[6px] border-slate-900/80 rounded-[120px] shadow-[inset_0_0_120px_rgba(0,0,0,0.9),0_20px_80px_rgba(0,0,0,0.8)] flex flex-col items-center justify-center transition-all duration-500 ${splashPot ? 'scale-[1.02]' : ''}`}>
+             <div className="flex flex-col items-center gap-6 py-8">
+                <div className="text-center mb-2">
+                  <span className="text-[8px] text-white/20 uppercase font-bold tracking-[0.5em] block mb-1">Active Pot</span>
+                  <span className={`text-5xl font-cinzel font-bold text-amber-500 tabular-nums transition-all ${splashPot ? 'scale-110 text-amber-400' : ''}`}>
                     ${gameState.pot.toLocaleString()}
                   </span>
                 </div>
 
-                {/* Compact Community Spread */}
-                <div className={`flex flex-col items-center gap-2 p-4 bg-black/20 rounded-[2rem] border border-white/5 transition-all ${splashPot ? 'animate-splash' : ''}`}>
-                    <div className="flex gap-1.5">
+                <div className={`flex flex-col items-center gap-3 p-6 bg-black/20 rounded-[3rem] border border-white/5 transition-all ${splashPot ? 'animate-splash' : ''}`}>
+                    <div className="flex gap-2">
                         {gameState.communityCards.slice(0, 3).map((card, i) => (
-                          <div key={i} className="animate-deal scale-[0.6]">
+                          <div key={i} className="animate-deal scale-[0.75]">
                             <CardComponent card={card} />
                           </div>
                         ))}
                     </div>
                     {gameState.communityCards.length > 3 && (
-                        <div className="flex gap-1.5 -mt-6">
+                        <div className="flex gap-2 -mt-4">
                             {gameState.communityCards.slice(3, 5).map((card, i) => (
-                                <div key={i + 3} className="animate-deal scale-[0.6]">
+                                <div key={i + 3} className="animate-deal scale-[0.75]">
                                     <CardComponent card={card} />
                                 </div>
                             ))}
                         </div>
                     )}
                     {gameState.communityCards.length === 0 && (
-                        <div className="h-[60px] flex items-center justify-center opacity-10 font-cinzel text-[10px] uppercase tracking-[0.6em] animate-pulse">Waiting for Dealer</div>
+                        <div className="h-[80px] flex items-center justify-center opacity-10 font-cinzel text-xs uppercase tracking-[0.8em] animate-pulse">Waiting for Dealer</div>
                     )}
                 </div>
 
-                {/* Hand Rarity Meter */}
-                <div className="w-48 flex flex-col items-center gap-1 mt-4">
+                <div className="w-56 flex flex-col items-center gap-1.5 mt-4">
                    <div className="flex justify-between w-full px-1">
-                      <span className="text-[7px] text-amber-500/80 font-bold uppercase">{boardEval.name}</span>
-                      <span className="text-[7px] text-white/40 font-mono">{boardEval.score}%</span>
+                      <span className="text-[8px] text-amber-500/80 font-bold uppercase">{boardEval.name}</span>
+                      <span className="text-[8px] text-white/40 font-mono">{boardEval.score}%</span>
                    </div>
-                   <div className="w-full h-1.5 bg-black/60 rounded-full border border-white/5 relative overflow-hidden">
+                   <div className="w-full h-2 bg-black/60 rounded-full border border-white/5 relative overflow-hidden">
                       <div className="h-full transition-all duration-1000" style={{ width: `${boardEval.score}%`, background: `linear-gradient(to right, #10b981, #f59e0b)` }} />
                    </div>
                 </div>
@@ -379,7 +385,13 @@ const App: React.FC = () => {
 
       {gameState.phase === GamePhase.WAITING ? (
         <div className="absolute bottom-12 left-12 z-[300] animate-pop">
-          <button onClick={startNewHand} className="px-10 py-4 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-2xl transition-all shadow-xl font-cinzel text-md tracking-wider">Start Hand</button>
+          <button 
+            disabled={isGeneratingAvatars}
+            onClick={startNewHand} 
+            className={`px-10 py-4 ${isGeneratingAvatars ? 'bg-slate-700 cursor-wait' : 'bg-amber-500 hover:bg-amber-400'} text-black font-bold rounded-2xl transition-all shadow-xl font-cinzel text-md tracking-wider`}
+          >
+            {isGeneratingAvatars ? 'Preparing...' : 'Start Hand'}
+          </button>
         </div>
       ) : (
         <ControlPanel gameState={gameState} onAction={handleAction} onNext={gameState.phase === GamePhase.SHOWDOWN ? startNewHand : undefined} />

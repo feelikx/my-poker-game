@@ -9,21 +9,24 @@ interface ControlPanelProps {
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({ gameState, onAction, onNext }) => {
-  const user = gameState.players.find(p => p.id === 'player')!;
+  const user = gameState.players.find(p => p.id === 'player');
   const isBettingRound = gameState.currentBet === 0;
-  const isUserTurn = gameState.activePlayerIndex === 0; // Simplified assumption for demo
+  const isUserTurn = gameState.activePlayerIndex === 0;
   
   const minBet = isBettingRound ? 100 : gameState.currentBet + 100;
-  const [amountInput, setAmountInput] = useState<string>(Math.min(minBet, user.chips).toString());
+  const [amountInput, setAmountInput] = useState<string>(Math.min(minBet, user?.chips || 0).toString());
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const recommended = Math.min(isBettingRound ? 100 : gameState.currentBet + 100, user.chips);
-    setAmountInput(recommended.toString());
-    setError(null);
-  }, [gameState.phase, gameState.currentBet, user.chips]);
+    if (user) {
+        const recommended = Math.min(isBettingRound ? 100 : gameState.currentBet + 100, user.chips);
+        setAmountInput(recommended.toString());
+        setError(null);
+    }
+  }, [gameState.phase, gameState.currentBet, user?.chips]);
 
   const handleAmountChange = (val: string) => {
+    if (!user) return;
     const num = parseInt(val);
     setAmountInput(val);
     
@@ -39,7 +42,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ gameState, onAction, onNext
   };
 
   const submitAction = (action: string) => {
-    if (!isUserTurn) return;
+    if (!isUserTurn || !user) return;
     const num = parseInt(amountInput);
     if (action === 'raise' || action === 'bet') {
       if (isNaN(num) || num <= 0 || num > user.chips) return;
@@ -49,7 +52,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ gameState, onAction, onNext
     }
   };
 
-  if (onNext) return null; // Controlled by Winner Overlay now
+  if (onNext || !user) return null;
 
   return (
     <div className={`absolute bottom-8 left-8 w-72 pointer-events-none z-[300] transition-opacity duration-300 ${!isUserTurn ? 'opacity-50' : 'opacity-100'}`}>
